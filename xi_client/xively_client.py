@@ -368,7 +368,6 @@ class XivelyClient:
 
         self._is_first_connect = True
 
-
     def __del__(self):
 
         self._cbHandler.remove_listener(self._get_control_topic_name(), self._boHandler)
@@ -454,9 +453,18 @@ class XivelyClient:
         hosts = XivelyConfig.XI_MQTT_HOSTS
         certs = XivelyConfig.XI_MQTT_CERTS
 
+        try:
+            # TLSv1.2 by default
+            use_tls_version = ssl.PROTOCOL_TLSv1_2
+        except:
+            # py2.7 has only TLSv1.0
+            use_tls_version = ssl.PROTOCOL_TLSv1
+
         # setup TLS if host requires it
         if hosts[self._hostindex][2] :
-            self._mqtt.tls_set( os.path.dirname( sys.modules[__name__].__file__ ) + "/certs/" + certs[self._certindex])
+            self._mqtt.tls_set(
+                os.path.dirname( sys.modules[__name__].__file__ ) + "/certs/" + certs[self._certindex],
+                tls_version=use_tls_version)
 
         # setup last will if present
         if self._options.will_message is not None:
