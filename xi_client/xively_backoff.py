@@ -4,7 +4,6 @@
 import time
 import random
 from .xively_error_codes import XivelyErrorCodes as xec
-from .control_pb2 import Message
 
 class XivelyBackoff:
 
@@ -84,8 +83,7 @@ class XivelyBackoff:
     @classmethod
     def on_message_received(cls,message):
 
-        mymessage = Message()
-        mymessage.ParseFromString(message.payload)
+        pass
 
 # for standalone testing
 if __name__ == '__main__':
