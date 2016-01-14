@@ -350,7 +350,6 @@ class XivelyClient:
 
         self._last_connection_time = 0
         self._last_cooldown_time = 0
-        self._control_request_id = -1
         self._backoff_duration = 0
 
         self._hostindex = 0
@@ -360,26 +359,13 @@ class XivelyClient:
         self._options = None
         self._disconnection_state = xec.XI_STATE_OK
 
-        self._cbHandler.add_listener(self._get_control_topic_name(), self._boHandler)
-        self._cbHandler.add_listener(self._get_control_topic_name(), self._coHandler)
-
         self._thread = None
         self._routine = None
 
     def __del__(self):
 
-        self._cbHandler.remove_listener(self._get_control_topic_name(), self._boHandler)
-        self._cbHandler.remove_listener(self._get_control_topic_name(), self._coHandler)
-
         self._cbHandler = None
         self._boHandler = None
-
-
-    def _get_control_topic_name(self):
-        return "xi/ctrl/v1/unique device id/clt"
-
-    def _get_device_status_topic_name(self):
-        return "device-status"
 
     def _runloop(self):
 
@@ -406,16 +392,8 @@ class XivelyClient:
             self._mqtt_loop()
 
 
-    def _routine_waiting_for_control_subscription_result(self):
-        if time.time() - self._last_connection_time > float(self._options.connection_timeout):
-            self._disconnection_state = xec.XI_CONTROL_TOPIC_SUBSCRIPTION_ERROR
-            self._routine = self._routine_rejected
-        else:
-            self._mqtt_loop()
-            self._try_cooldown()
-
-
     def _routine_connected(self):
+        print("_routine_connected")
         self._mqtt_loop()
         self._try_cooldown()
 
@@ -539,11 +517,8 @@ class XivelyClient:
 
         XivelyBackoff.reset_last_update()
 
-        # subscribe for control topic
-        result, self._control_request_id = self._mqtt.subscribe([(self._get_control_topic_name(), 1)])
-
-        # start timeout for control topic SUBACK
-        self._routine = self._routine_waiting_for_control_subscription_result
+        self._routine = self._routine_connected
+        self._cbHandler.on_connect_finished(xec.XI_STATE_OK)
 
 
     def _mqtt_on_connect_finished(self, flag_or_result, result=-1):
@@ -599,10 +574,6 @@ class XivelyClient:
             self._last_connection_time = 0
             self._routine = self._routine_rejected
 
-        elif self._routine == self._routine_waiting_for_control_subscription_result :
-            self._last_connection_time = 0
-            self._routine = self._routine_rejected
-
         elif self._routine == self._routine_connected :
             self._last_connection_time = 0
             self._routine = self._routine_disconnected
@@ -626,19 +597,7 @@ class XivelyClient:
 
     def _mqtt_on_subscribe_finished(self, request_id, granted_qos):
 
-        if request_id != self._control_request_id :
-
-            self._cbHandler.on_subscribe_finished(request_id, granted_qos)
-
-        else :
-
-            # control topic subscription finished
-            # reset control request id and notify user
-
-            self._control_request_id = -1
-
-            self._routine = self._routine_connected
-            self._cbHandler.on_connect_finished(xec.XI_STATE_OK)
+        self._cbHandler.on_subscribe_finished(request_id, granted_qos)
 
 
     def _mqtt_on_unsubscribe_finished(self, request_id):
