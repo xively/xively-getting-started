@@ -366,8 +366,6 @@ class XivelyClient:
         self._thread = None
         self._routine = None
 
-        self._is_first_connect = True
-
     def __del__(self):
 
         self._cbHandler.remove_listener(self._get_control_topic_name(), self._boHandler)
@@ -420,7 +418,6 @@ class XivelyClient:
     def _routine_connected(self):
         self._mqtt_loop()
         self._try_cooldown()
-        self._send_publish_count_periodically()
 
 
     def _routine_rejected(self):
@@ -537,20 +534,6 @@ class XivelyClient:
 
         time.sleep(1.0)
 
-    def _send_publish_count_periodically(self):
-        if float(self._options.publish_count_send_time_period) > 0.0 and \
-         (time.time() - self._last_publish_count_send_time >= float(self._options.publish_count_send_time_period)):
-            current_publish_count = XivelyClient.publish_count_until_last_stat_message
-            XivelyClient.publish_count_until_last_stat_message = 0
-            self._publish_device_status_data("Publish count: " + str( current_publish_count ), 0, False)
-            self._last_publish_count_send_time = time.time()
-
-
-    def _publish_device_status_data(self, payload=None, qos=0, retain=False):
-        # just a forwarder function to make us able to easiliy disable device status data publishes
-        #self.publish(self._get_device_status_topic_name(), payload, qos, retain)
-        pass
-
 
     def _mqtt_on_connected(self, previous_connection_result):
 
@@ -558,14 +541,6 @@ class XivelyClient:
 
         # subscribe for control topic
         result, self._control_request_id = self._mqtt.subscribe([(self._get_control_topic_name(), 1)])
-
-        if self._is_first_connect:
-            # publish device status data
-            self._publish_device_status_data("Client library version: " + XivelyClientVersion.get_version_string(), 0, False)
-            self._is_first_connect = False
-
-        self._publish_device_status_data("Last connection return code: " + str( previous_connection_result ), 0, False)
-        self._publish_device_status_data("Backoff index: " + str( XivelyBackoff.backoff_lut_i ), 0, False)
 
         # start timeout for control topic SUBACK
         self._routine = self._routine_waiting_for_control_subscription_result
