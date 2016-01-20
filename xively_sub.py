@@ -39,7 +39,7 @@ def on_connect_finished(client,result):
             connect_try_number = next(get_connect_try_number)
         except StopIteration:
             print("Couldnt connect to the endpoint in %d tries, shutting down." % retrys_number)
-            sys.exit( -1 )
+            sys.exit(-1)
         print("Connection try %d/%d"  % (connect_try_number, retrys_number))
         print("Connection error :" , result)
         print("Reconnecting to the broker ... ")
@@ -49,30 +49,15 @@ def on_disconnect_finished(client,result):
     print("on_disconnect_finished",result)
 
 
-def on_publish_finished(client,message):
-    print("on_publish_finished")
-
-
 def on_subscribe_finished(client,mid,granted_qos):
     global test_topic
 
     print("on_subscribe_finished " )
-    print( "publishing to topic" )
-    client.publish( test_topic, "Hello through xively!!!", 0 , False )
-
-
-def on_unsubscribe_finished(client,mid):
-    print("on_unsubscribe_finished")
-    print( "disconnecting" )
-    client.disconnect()
-
 
 def on_message_received(client,message):
     global test_topic
 
     print("on_message_received",str(message))
-    print( "unsubscribing from topic" )
-    client.unsubscribe( test_topic )
 
 def u2a( data ):
     return str( codecs.decode( codecs.encode( data, 'ascii', 'ignore' ), 'ascii', 'ignore' ) )
@@ -82,9 +67,7 @@ if __name__ == '__main__':
     client = XivelyClient()
     client.on_connect_finished = on_connect_finished
     client.on_disconnect_finished = on_disconnect_finished
-    client.on_publish_finished = on_publish_finished
     client.on_subscribe_finished = on_subscribe_finished
-    client.on_unsubscribe_finished = on_unsubscribe_finished
     client.on_message_received = on_message_received
 
     params = XivelyConnectionParameters()
