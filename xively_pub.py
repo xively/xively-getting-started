@@ -5,6 +5,9 @@ import sys
 import os
 import codecs
 import time
+import random
+import math
+from datetime import datetime
 
 from xi_client.xively_client import XivelyClient
 from xi_client.xively_connection_parameters import XivelyConnectionParameters
@@ -18,6 +21,21 @@ username = None
 password = None
 test_topic = None
 
+def pi_gen():
+    iteration = 0
+    count_inside = 0
+
+    while True:
+        for i in range(0, 100):
+            iteration += 1
+
+            d = math.hypot( random.random(), random.random() )
+
+            if d < 1:
+                count_inside += 1
+
+        yield iteration, str( 4.0 * count_inside / iteration )
+
 def retry_number_gen():
     try_number = 0
 
@@ -26,9 +44,14 @@ def retry_number_gen():
         yield try_number
 
 get_connect_try_number = retry_number_gen()
+get_pi_evaluation = pi_gen()
 
 def publish_message(client, topic):
-    client.publish(topic, "Hello through xively!!!", 0, False)
+    iterations, value = next(get_pi_evaluation)
+    message = "Hello through Xively with pi estimation after iteration: " \
+        + str(iterations) + " value: " + value + " and timestamp = " \
+        + str(datetime.now()) + "!!!"
+    client.publish(topic, message, 0, False)
 
 def on_connect_finished(client,result):
     print("on_connect_finished",str(result))
