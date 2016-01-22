@@ -29,7 +29,8 @@ class XivelyClient:
 
     # callbacks
 
-    def on_connect_finished(self, result):
+    @staticmethod
+    def on_connect_finished(client, result):
         """called when the xively service responds to our connection request or when a connection error occurs.
 
         result -- a XivelyErrorCodes class member, possible values are :
@@ -42,7 +43,8 @@ class XivelyClient:
             xec.XI_TLS_CONNECT_ERROR : Connection refused, TLS error"""
         pass
 
-    def on_disconnect_finished(self, result):
+    @staticmethod
+    def on_disconnect_finished(client, result):
         """called when the xively service responds to our disconnection request
 
         result -- the Xively Error Code, possible values are :
@@ -50,7 +52,8 @@ class XivelyClient:
             xec.XI_STATE_OK : Connection successful"""
         pass
 
-    def on_publish_finished(self, request_id):
+    @staticmethod
+    def on_publish_finished(client, request_id):
         """called when a message that was to be sent using the publish() call has completed transmission to the broker.
         For messages with QoS levels 1 and 2, this means that the appropriate handshakes have completed. For QoS 0,
         this simply means that the message has left the client.
@@ -58,20 +61,23 @@ class XivelyClient:
         request_id -- the identifier of the publish request"""
         pass
 
-    def on_subscribe_finished(self, request_id, granted_qos):
+    @staticmethod
+    def on_subscribe_finished(client, request_id, granted_qos):
         """called when the broker responds to a subscribe request.
 
         request_id -- the identifier of the subscribe request
         granted_qos -- the qos the service granted for the request"""
         pass
 
-    def on_unsubscribe_finished(self, request_id):
+    @staticmethod
+    def on_unsubscribe_finished(client, request_id):
         """called when the broker responds to an unsubscribe request.
 
         request_id -- the identifier of the unsubscribe request"""
         pass
 
-    def on_message_received(self, message):
+    @staticmethod
+    def on_message_received(client, message):
         """called when a message has been received on a topic that the client subscribes to. The message variable is a
         XivelyMessage instance that describes all of the message parameters."""
         pass
