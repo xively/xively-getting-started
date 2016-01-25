@@ -18,6 +18,20 @@ from .xively_message import XivelyMessage
 from .xively_error_codes import XivelyErrorCodes as xec
 from .xively_version import XivelyClientVersion
 
+def return_if_inactive( *ret_args ):
+    """
+    This is a decorator that returns proper value if the main thread has been
+    set as inactive. This decorator prevents infinite looping in case of calling client
+    method from one of the callback.
+    """
+    def return_if_inactive_body( decorated_function ):
+        def return_if_inactive_logic( self, *args, **kwargs ):
+            if not self._alive:
+                return ret_args
+            else:
+                return decorated_function( self, *args, **kwargs )
+        return return_if_inactive_logic
+    return return_if_inactive_body
 
 class XivelyClient:
 
@@ -29,7 +43,8 @@ class XivelyClient:
 
     # callbacks
 
-    def on_connect_finished(self, result):
+    @staticmethod
+    def on_connect_finished(client, result):
         """called when the xively service responds to our connection request or when a connection error occurs.
 
         result -- a XivelyErrorCodes class member, possible values are :
@@ -42,7 +57,8 @@ class XivelyClient:
             xec.XI_TLS_CONNECT_ERROR : Connection refused, TLS error"""
         pass
 
-    def on_disconnect_finished(self, result):
+    @staticmethod
+    def on_disconnect_finished(client, result):
         """called when the xively service responds to our disconnection request
 
         result -- the Xively Error Code, possible values are :
@@ -50,7 +66,8 @@ class XivelyClient:
             xec.XI_STATE_OK : Connection successful"""
         pass
 
-    def on_publish_finished(self, request_id):
+    @staticmethod
+    def on_publish_finished(client, request_id):
         """called when a message that was to be sent using the publish() call has completed transmission to the broker.
         For messages with QoS levels 1 and 2, this means that the appropriate handshakes have completed. For QoS 0,
         this simply means that the message has left the client.
@@ -58,20 +75,23 @@ class XivelyClient:
         request_id -- the identifier of the publish request"""
         pass
 
-    def on_subscribe_finished(self, request_id, granted_qos):
+    @staticmethod
+    def on_subscribe_finished(client, request_id, granted_qos):
         """called when the broker responds to a subscribe request.
 
         request_id -- the identifier of the subscribe request
         granted_qos -- the qos the service granted for the request"""
         pass
 
-    def on_unsubscribe_finished(self, request_id):
+    @staticmethod
+    def on_unsubscribe_finished(client, request_id):
         """called when the broker responds to an unsubscribe request.
 
         request_id -- the identifier of the unsubscribe request"""
         pass
 
-    def on_message_received(self, message):
+    @staticmethod
+    def on_message_received(client, message):
         """called when a message has been received on a topic that the client subscribes to. The message variable is a
         XivelyMessage instance that describes all of the message parameters."""
         pass
@@ -100,13 +120,24 @@ class XivelyClient:
             else :
                 self._routine = self._routine_reconnect
 
+
         self._alive = True
 
         # start runloop if needed
         if self._thread == None :
-
             self._thread = threading.Thread( target = self._runloop , args = [ ] )
-            self._thread.start( )
+            self._thread.start()
+
+    def join(self):
+        try:
+            while self._alive:
+                self._thread.join(1.0)
+        except KeyboardInterrupt:
+            try:
+                self._alive = False
+                self._thread.join()
+            except KeyboardInterrupt:
+                pass
 
 
     def disconnect(self):
@@ -118,7 +149,7 @@ class XivelyClient:
 
 
     # returns a success, request_id tuple
-
+    @return_if_inactive(False, None)
     def subscribe(self, topics):
         """Subscribe the client to one or more topics.
 
@@ -152,7 +183,7 @@ class XivelyClient:
 
 
     # returns a success, request_id tuple
-
+    @return_if_inactive(False, None)
     def unsubscribe(self, topics):
         """Unsubscribe the client from one or more topics.
 
@@ -186,7 +217,7 @@ class XivelyClient:
 
 
     # returns a success, request_id tuple
-
+    @return_if_inactive(False, None)
     def publish(self, topic, payload, qos, retain):
         """publish a message on a topic.
 
@@ -213,7 +244,7 @@ class XivelyClient:
         else:
             return False, request_id
 
-
+    @return_if_inactive(False,None)
     def publish_timeseries(self, topic, value, qos):
 
         """publish a float value on a topic marked as timeseries
@@ -240,7 +271,7 @@ class XivelyClient:
 
         return self.publish(topic, bytearray( payload ), qos, False)
 
-
+    @return_if_inactive(False, None)
     def publish_formatted_timeseries(self, topic, time, in_category, in_string_value, in_numeric_value, qos):
 
         """publish a float value on a topic marked as timeseries
@@ -368,7 +399,6 @@ class XivelyClient:
 
         self._is_first_connect = True
 
-
     def __del__(self):
 
         self._cbHandler.remove_listener(self._get_control_topic_name(), self._boHandler)
@@ -454,9 +484,18 @@ class XivelyClient:
         hosts = XivelyConfig.XI_MQTT_HOSTS
         certs = XivelyConfig.XI_MQTT_CERTS
 
+        try:
+            # TLSv1.2 by default
+            use_tls_version = ssl.PROTOCOL_TLSv1_2
+        except:
+            # py2.7 has only TLSv1.0
+            use_tls_version = ssl.PROTOCOL_TLSv1
+
         # setup TLS if host requires it
         if hosts[self._hostindex][2] :
-            self._mqtt.tls_set( os.path.dirname( sys.modules[__name__].__file__ ) + "/certs/" + certs[self._certindex])
+            self._mqtt.tls_set(
+                os.path.dirname( sys.modules[__name__].__file__ ) + "/certs/" + certs[self._certindex],
+                tls_version=use_tls_version)
 
         # setup last will if present
         if self._options.will_message is not None:

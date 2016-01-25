@@ -119,3 +119,4 @@ if __name__ == '__main__':
 
     print( "Connecting to the correct broker ... ")
     client.connect(params)
+    client.join()
