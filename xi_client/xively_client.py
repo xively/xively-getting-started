@@ -18,6 +18,20 @@ from .xively_message import XivelyMessage
 from .xively_error_codes import XivelyErrorCodes as xec
 from .xively_version import XivelyClientVersion
 
+def return_if_inactive( *ret_args ):
+    """
+    This is a decorator that returns proper value if the main thread has been
+    set as inactive. This decorator prevents infinite looping in case of calling client
+    method from one of the callback.
+    """
+    def return_if_inactive_body( decorated_function ):
+        def return_if_inactive_logic( self, *args, **kwargs ):
+            if not self._alive:
+                return ret_args
+            else:
+                return decorated_function( self, *args, **kwargs )
+        return return_if_inactive_logic
+    return return_if_inactive_body
 
 class XivelyClient:
 
@@ -106,13 +120,24 @@ class XivelyClient:
             else :
                 self._routine = self._routine_reconnect
 
+
         self._alive = True
 
         # start runloop if needed
         if self._thread == None :
-
             self._thread = threading.Thread( target = self._runloop , args = [ ] )
-            self._thread.start( )
+            self._thread.start()
+
+    def join(self):
+        try:
+            while self._alive:
+                self._thread.join(1.0)
+        except KeyboardInterrupt:
+            try:
+                self._alive = False
+                self._thread.join()
+            except KeyboardInterrupt:
+                pass
 
 
     def disconnect(self):
@@ -124,7 +149,7 @@ class XivelyClient:
 
 
     # returns a success, request_id tuple
-
+    @return_if_inactive(False, None)
     def subscribe(self, topics):
         """Subscribe the client to one or more topics.
 
@@ -158,7 +183,7 @@ class XivelyClient:
 
 
     # returns a success, request_id tuple
-
+    @return_if_inactive(False, None)
     def unsubscribe(self, topics):
         """Unsubscribe the client from one or more topics.
 
@@ -192,7 +217,7 @@ class XivelyClient:
 
 
     # returns a success, request_id tuple
-
+    @return_if_inactive(False, None)
     def publish(self, topic, payload, qos, retain):
         """publish a message on a topic.
 
@@ -219,7 +244,7 @@ class XivelyClient:
         else:
             return False, request_id
 
-
+    @return_if_inactive(False,None)
     def publish_timeseries(self, topic, value, qos):
 
         """publish a float value on a topic marked as timeseries
@@ -246,7 +271,7 @@ class XivelyClient:
 
         return self.publish(topic, bytearray( payload ), qos, False)
 
-
+    @return_if_inactive(False, None)
     def publish_formatted_timeseries(self, topic, time, in_category, in_string_value, in_numeric_value, qos):
 
         """publish a float value on a topic marked as timeseries
