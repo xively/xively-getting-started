@@ -1,4 +1,4 @@
-# Copyright (c) 2003-2015, LogMeIn, Inc. All rights reserved.
+# Copyright (c) 2003-2015, Xively. All rights reserved.
 # This is part of Xively Python library.
 
 class XivelyClientVersion:
